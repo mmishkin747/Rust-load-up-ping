@@ -137,6 +137,10 @@ async fn con_auth(config: &Config) -> MyResult<Connecter> {
     Ok(connecter)
 }
 
+async fn send_command() -> MyResult<()>{
+    Ok(())
+}
+
 /*
 fn create_vec(f: fn(), config: &Config) -> Vec<fn()> {
     let mut vec: Vec<fn()> = Vec::new();
