@@ -1,9 +1,10 @@
+
 use async_std::task::sleep;
 use clap::Parser;
 use futures::executor::block_on;
 use futures::future::join_all;
 use std::error::Error;
-use std::io::{BufReader, LineWriter, Read, Write};
+use std::io::{BufReader, LineWriter, Read, Write, BufRead};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::ops::RangeInclusive;
 use std::time::Duration;
@@ -33,7 +34,7 @@ struct Cli {
     #[arg(short, long, value_parser = count_sessions_in_range, default_value_t = 1)]
     count_session: u64,
     /// Timeout for write/right, sec
-    #[arg(short, long, default_value_t = 10)]
+    #[arg(short, long, default_value_t = 2)]
     time_out: u64,
     /// Size MTU
     #[arg(short, long, default_value_t = 1500)]
@@ -68,19 +69,27 @@ impl Connecter {
         Ok(Self { reader, writer })
     }
 
-    pub fn send_mes(&mut self, message: &str) -> MyResult<()> {
+    pub async fn send_mes(&mut self, message: &str) -> MyResult<()> {
+
+        let mes = message.to_string() + &"\r\n".to_string();
         self.writer
-            .write_all(&message.as_bytes())
+            .write_all(&mes.as_bytes())
             .expect("didn't send messg");
-        self.writer.write(&['\n' as u8])?;
+        //self.writer.write(&['\r' as u8,'\n' as u8])?;
         Ok(())
     }
+
     pub async fn read_mes(&mut self) -> MyResult<String> {
-        let mut buf = [0 as u8; 1024];
-        sleep(Duration::from_secs(1)).await;
-        self.reader.read(&mut buf).unwrap();
+        //let mut buf = [0 as u8; 1024];
+        //sleep(Duration::from_millis(100)).await;
+        //sleep(Duration::from_millis(1));
+        //self.reader.read(&mut buf).unwrap();
+        let mut buf = Vec::new();
+        //let mut buf = String::new();
+        _ = self.reader.read_to_end(&mut buf);
         let res = String::from_utf8_lossy(&buf);
         Ok(res.to_string())
+        //Ok(buf)
     }
 }
 
@@ -118,28 +127,33 @@ pub fn run(config: Config) -> MyResult<()> {
 async fn async_run(config: Config) -> MyResult<()> {
     let mut vec = Vec::new();
     for _ in 0..config.count_session {
-        vec.push(con_auth(&config))
+        vec.push(con(&config));
     }
 
     let auth_res = join_all(vec).await;
+    sleep(Duration::from_secs(5)).await;
+
     dbg!(auth_res);
+
     Ok(())
 }
 
-async fn con_auth(config: &Config) -> MyResult<Connecter> {
-    let mut connecter = Connecter::new(config)?;
-    let data = connecter.read_mes().await;
-    dbg!(&data);
-    connecter.send_mes(config.user.as_str()).unwrap();
-    connecter.send_mes(config.passw.as_str())?;
-    let data = connecter.read_mes().await;
-    dbg!(&data);
+async fn con(config: &Config) -> MyResult<Connecter>  {
+    let mut connecter = Connecter::new(config).unwrap();
+
+
+    connecter.send_mes(config.user.as_str()).await;
+    connecter.send_mes(config.passw.as_str()).await;
+    //_ = connecter.read_mes();
+    connecter.send_mes("ping 192.168.2.2 repeat 1123").await;
+    //let data = connecter.read_mes().await;
+
+    //dbg!(&data);
+    //println!("{}", &data.unwrap());
+    
     Ok(connecter)
 }
 
-async fn send_command() -> MyResult<()>{
-    Ok(())
-}
 
 /*
 fn create_vec(f: fn(), config: &Config) -> Vec<fn()> {
