@@ -11,14 +11,17 @@ rfup -h
 >Usage: rlup [OPTIONS] <ADDRESS_SERVER> <ADDRESS_HOST>
 >
 >Arguments:
-
+>
 >  <ADDRESS_SERVER>  Network ipv4 address server
-
+>
 >  <ADDRESS_HOST>    Network ipv4 address host
 >
 >Options:
+>
 >  -u, --user <USER>                    User's name for connecting ups
+>
 >  -p, --password <PASSWORD>            Password for connecting ups
+>
 >      --port <PORT>                    Network port to use [default: 23]
 >  -c, --count-session <COUNT_SESSION>  Count session [default: 1]
 >  -t, --time-out <TIME_OUT>            Timeout for write/right, sec [default: 2]
