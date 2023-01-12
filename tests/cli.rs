@@ -1,6 +1,6 @@
 use assert_cmd::Command;
 use predicates::prelude::*;
-use std::{fs, process::Child, io};
+use std::{fs, process::Child, io, thread::sleep, time::Duration};
 
 type TestResult = Result<(), Box<dyn std::error::Error>>;
 
@@ -16,7 +16,7 @@ fn dies_no_args() -> TestResult {
 fn run(args: &[&str], expected_file: &str) -> TestResult {
     let expected = fs::read_to_string(expected_file)?;
 
-    Command::cargo_bin("rfd")?
+    Command::cargo_bin("rlup")?
         .args(args)
         .assert()
         .success()
@@ -26,20 +26,17 @@ fn run(args: &[&str], expected_file: &str) -> TestResult {
 
 
 fn run_server(port: u16) -> io::Result<Child> {
-    std::process::Command::new("python3").args(["./telnet_server", port.to_string().as_str()]).spawn()
+    std::process::Command::new("python3").args(["tests/telnet_server.py", port.to_string().as_str()]).spawn()
 }
 
 #[test]
 fn test_1() -> TestResult {
-    let port: u16 = 2065;
-    let command = run_server(port);
+    let port: u16 = 2061;
+    let mut command = run_server(port).unwrap();
+    sleep(Duration::from_secs(1));
 
-    let res = run(&["tests/input/hello.docx"], "tests/expected/hello.txt");
+    let res = run(&["127.0.0.1", "192.168.1.1", "--port", port.to_string().as_str(),], "tests/expected/test_1.txt");
 
-    if let Ok(mut child) = command {
-        child.kill().expect("command wasn't running");
-    } else {
-        println!("yes command didn't start");
-    };
+    command.kill().unwrap();
     res
 }

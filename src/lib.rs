@@ -115,7 +115,6 @@ pub fn get_args() -> MyResult<Config> {
 }
 
 pub fn run(config: Config) -> MyResult<()> {
-    dbg!(&config);
     block_on(async_run(config))?;
     Ok(())
 }
@@ -148,7 +147,6 @@ async fn con(config: &Config) -> Connecter  {
 }
 async fn reading(conector: &mut Connecter) {
     let res = conector.read_mes().await.unwrap();
-
     for line in res.lines() {
         if line.starts_with("Success rate is") {
             println!("{}", line);

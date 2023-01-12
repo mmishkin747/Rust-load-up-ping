@@ -9,32 +9,27 @@ server.listen(5)
 
 connections = []
 
-def auth(connections):
-    connection.send(b"username:")
-    while True:
-        try:
-            message = connection.recv(4096)
-        except BlockingIOError:
-            continue
-        if message:
-            print(message)
-        match message:
-                case b'admin\r\n':
-                    connection.send(b'password:')
-                case b'1111\r\n':
-                    connection.send(b'auth successful\r\n')
-                    return connection
-
 while True:
     try:
         connection, address = server.accept()
         connection.setblocking(False)
-        connection.send(b"Hello! I'm test stend\r\n")
-        auth(connection)
+        
         connections.append(connection)
     except BlockingIOError:
         pass
 
+    for connection in connections:
+        try:
+            message = connection.recv(4096)
+        except BlockingIOError:
+            continue
+
+        if message: 
+            match message:
+                case b'ping 192.168.1.1 repeat 1000 size 1500\r\n' :
+                    connection.send(b'Success rate is ... TEST 1 OK\r\n')
+
+    
         
 
 
