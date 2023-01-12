@@ -1,10 +1,8 @@
-
-use async_std::task::sleep;
 use clap::Parser;
 use futures::executor::block_on;
 use futures::future::join_all;
 use std::error::Error;
-use std::io::{BufReader, LineWriter, Read, Write, BufRead};
+use std::io::{BufReader, LineWriter, Read, Write};
 use std::net::{IpAddr, SocketAddr, TcpStream};
 use std::ops::RangeInclusive;
 use std::time::Duration;
@@ -37,7 +35,7 @@ struct Cli {
     #[arg(short, long, default_value_t = 2)]
     time_out: u64,
     /// Size MTU
-    #[arg(short, long, default_value_t = 1500)]
+    #[arg(short, long, value_parser = size_in_range, default_value_t = 1500)]
     mtu: u16,
     /// Count repit ping
     #[arg(short, long, default_value_t = 1000)]
@@ -51,6 +49,8 @@ pub struct Config {
     passw: String,
     count_session: u64,
     timeout: Duration,
+    repit: u16,
+    mtu: u16,
 }
 
 #[derive(Debug)]
@@ -75,21 +75,14 @@ impl Connecter {
         self.writer
             .write_all(&mes.as_bytes())
             .expect("didn't send messg");
-        //self.writer.write(&['\r' as u8,'\n' as u8])?;
         Ok(())
     }
 
-    pub async fn read_mes(&mut self) -> MyResult<String> {
-        //let mut buf = [0 as u8; 1024];
-        //sleep(Duration::from_millis(100)).await;
-        //sleep(Duration::from_millis(1));
-        //self.reader.read(&mut buf).unwrap();
+    pub async fn read_mes(&mut self) -> MyResult<String> {  
         let mut buf = Vec::new();
-        //let mut buf = String::new();
         _ = self.reader.read_to_end(&mut buf);
         let res = String::from_utf8_lossy(&buf);
         Ok(res.to_string())
-        //Ok(buf)
     }
 }
 
@@ -108,6 +101,7 @@ pub fn get_args() -> MyResult<Config> {
         }
     }
 
+
     Ok(Config {
         addr_server,
         addr_host: cli.address_host,
@@ -115,6 +109,8 @@ pub fn get_args() -> MyResult<Config> {
         passw,
         timeout,
         count_session: cli.count_session,
+        repit: cli.repit,
+        mtu: cli.mtu,
     })
 }
 
@@ -129,43 +125,38 @@ async fn async_run(config: Config) -> MyResult<()> {
     for _ in 0..config.count_session {
         vec.push(con(&config));
     }
-
-    let auth_res = join_all(vec).await;
-    sleep(Duration::from_secs(5)).await;
-
-    dbg!(auth_res);
-
+    let mut res_con = join_all(vec).await;
+    let mut vec = Vec::new();
+    for con in res_con.iter_mut() {
+        vec.push(reading( con));
+    }
+    _ = join_all(vec).await;
+    
     Ok(())
 }
 
-async fn con(config: &Config) -> MyResult<Connecter>  {
+async fn con(config: &Config) -> Connecter  {
     let mut connecter = Connecter::new(config).unwrap();
 
-
-    connecter.send_mes(config.user.as_str()).await;
-    connecter.send_mes(config.passw.as_str()).await;
-    //_ = connecter.read_mes();
-    connecter.send_mes("ping 192.168.2.2 repeat 1123").await;
-    //let data = connecter.read_mes().await;
-
-    //dbg!(&data);
-    //println!("{}", &data.unwrap());
+    _ = connecter.send_mes(config.user.as_str()).await;
+    _ = connecter.send_mes(config.passw.as_str()).await;
     
-    Ok(connecter)
+    let command = format!("ping {} repeat {} size {}", config.addr_host, config.repit, config.mtu);
+    _ = connecter.send_mes(command.as_str()).await;
+     
+    connecter
 }
+async fn reading(conector: &mut Connecter) {
+    let res = conector.read_mes().await.unwrap();
 
-
-/*
-fn create_vec(f: fn(), config: &Config) -> Vec<fn()> {
-    let mut vec: Vec<fn()> = Vec::new();
-    for i in 0..config.count_session {
-        vec.push(f());
+    for line in res.lines() {
+        if line.starts_with("Success rate is") {
+            println!("{}", line);
+        }
     }
-    vec
 }
-*/
 
-/// This func check valid number port
+/// This func check valid count session
 fn count_sessions_in_range(s: &str) -> Result<u64, String> {
     let port_range: RangeInclusive<usize> = 1..=20;
     let port: usize = s
@@ -181,6 +172,7 @@ fn count_sessions_in_range(s: &str) -> Result<u64, String> {
         ))
     }
 }
+/// This func check valid number port
 fn port_in_range(s: &str) -> Result<u16, String> {
     let port_range: RangeInclusive<usize> = 1..=65535;
     let port: usize = s
@@ -191,6 +183,23 @@ fn port_in_range(s: &str) -> Result<u16, String> {
     } else {
         Err(format!(
             "Port not in range {}-{}",
+            port_range.start(),
+            port_range.end()
+        ))
+    }
+}
+
+/// This func check valid MTU
+fn size_in_range(s: &str) -> Result<u16, String> {
+    let port_range: RangeInclusive<usize> = 36..=18024;
+    let port: usize = s
+        .parse()
+        .map_err(|_| format!("`{}`  isn't a MTU", s))?;
+    if port_range.contains(&port) {
+        Ok(port as u16)
+    } else {
+        Err(format!(
+            "MTU not in range {}-{}",
             port_range.start(),
             port_range.end()
         ))
