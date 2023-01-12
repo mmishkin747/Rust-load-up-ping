@@ -4,7 +4,7 @@ This is CLI program for loud up channel by ping. Usage for cisco
 ## Usage
 
 ```sh
-rfup -h
+rlup -h
 ```
 
 >Usage: rlup [OPTIONS] <ADDRESS_SERVER> <ADDRESS_HOST>
@@ -12,7 +12,7 @@ rfup -h
 for exaples:
 
 ```sh
-rfup 192.168.2.1 192.168.2.2 -u admin -p "passw" -c 2 -r 1000 -m 1400
+rlup 192.168.2.1 192.168.2.2 -u admin -p "passw" -c 2 -r 1000 -m 1400
 ```
 
 result:
