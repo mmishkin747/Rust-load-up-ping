@@ -11,7 +11,9 @@ rfup -h
 >Usage: rlup [OPTIONS] <ADDRESS_SERVER> <ADDRESS_HOST>
 >
 >Arguments:
+
 >  <ADDRESS_SERVER>  Network ipv4 address server
+
 >  <ADDRESS_HOST>    Network ipv4 address host
 >
 >Options:
