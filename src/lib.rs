@@ -122,19 +122,24 @@ pub fn run(config: Config) -> MyResult<()> {
 async fn async_run(config: Config) -> MyResult<()> {
     let mut vec = Vec::new();
     for _ in 0..config.count_session {
-        vec.push(con(&config));
+        vec.push(connect(&config));
     }
     let mut res_con = join_all(vec).await;
     let mut vec = Vec::new();
-    for con in res_con.iter_mut() {
-        vec.push(reading( con));
+    for (count, con) in res_con.iter_mut().enumerate() {
+        match con {
+            Ok(res) => {
+                vec.push(reading_terminal( res));    
+            }
+            Err(_) => {eprintln!("Session {count} - Error connecting")}   
+        }   
     }
     _ = join_all(vec).await;
     
     Ok(())
 }
 
-async fn con(config: &Config) -> Connecter  {
+async fn connect(config: &Config) -> MyResult<Connecter>  {
     let mut connecter = Connecter::new(config).unwrap();
 
     _ = connecter.send_mes(config.user.as_str()).await;
@@ -143,9 +148,10 @@ async fn con(config: &Config) -> Connecter  {
     let command = format!("ping {} repeat {} size {}", config.addr_host, config.repit, config.mtu);
     _ = connecter.send_mes(command.as_str()).await;
      
-    connecter
+    Ok(connecter)
 }
-async fn reading(conector: &mut Connecter) {
+
+async fn reading_terminal(conector: &mut Connecter) {
     let res = conector.read_mes().await.unwrap();
     for line in res.lines() {
         if line.starts_with("Success rate is") {
