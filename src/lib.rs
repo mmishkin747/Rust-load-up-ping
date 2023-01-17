@@ -59,9 +59,9 @@ pub struct Connecter {
     reader: BufReader<TcpStream>,
 }
 impl Connecter {
+
     pub fn new(config: &Config) -> MyResult<Self> {
-        let stream = TcpStream::connect_timeout(&config.addr_server, config.timeout)
-            .expect("Error conect to server");
+        let stream = TcpStream::connect_timeout(&config.addr_server, config.timeout)?;
         stream.set_read_timeout(Some(config.timeout)).unwrap();
         stream.set_write_timeout(Some(config.timeout)).unwrap();
         let writer = LineWriter::new(stream.try_clone()?);
@@ -101,7 +101,6 @@ pub fn get_args() -> MyResult<Config> {
         }
     }
 
-
     Ok(Config {
         addr_server,
         addr_host: cli.address_host,
@@ -140,7 +139,7 @@ async fn async_run(config: Config) -> MyResult<()> {
 }
 
 async fn connect(config: &Config) -> MyResult<Connecter>  {
-    let mut connecter = Connecter::new(config).unwrap();
+    let mut connecter = Connecter::new(config)?;
 
     _ = connecter.send_mes(config.user.as_str()).await;
     _ = connecter.send_mes(config.passw.as_str()).await;
@@ -152,11 +151,16 @@ async fn connect(config: &Config) -> MyResult<Connecter>  {
 }
 
 async fn reading_terminal(conector: &mut Connecter) {
-    let res = conector.read_mes().await.unwrap();
-    for line in res.lines() {
-        if line.starts_with("Success rate is") {
-            println!("{}", line);
+    let read_output = conector.read_mes().await;
+    match read_output {
+        Ok(output) => {
+            for line in output.lines() {
+                if line.starts_with("Success rate is") {
+                    println!("{}", line);
+                };  
+            }    
         }
+        Err(_) => {eprintln!("Error reading terminal")}
     }
 }
 
